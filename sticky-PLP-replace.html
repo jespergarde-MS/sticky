@@ -36,20 +36,25 @@ img { display: block; width: 375px; height: auto; }
     inset: 0 0 auto 0;
     width: 100%;
     background: #fff;
+    transition: transform 300ms ease;
+    will-change: transform;
 }
 .fixed-nav {
     z-index: 2;
     transform: translateY(-100%);
-    transition: transform 300ms ease;
 }
-.fixed-filters { z-index: 1; }
+.fixed-filters {
+    z-index: 1;
+    transform: translateY(0);
+}
 .fixed-stack.nav-visible .fixed-stage { height: var(--nav-height, 0px); }
 .fixed-stack.nav-visible .fixed-nav { transform: translateY(0); }
-.fixed-stack.nav-visible .fixed-filters,
 .fixed-stack.filters-released .fixed-filters { visibility: hidden; }
+.fixed-stack.nav-visible .fixed-filters { transform: translateY(-100%); }
 
 @media (prefers-reduced-motion: reduce) {
     .fixed-stage, .fixed-nav { transition: none !important; }
+    .fixed-filters { transition: none !important; }
 }
 </style>
 </head>
@@ -71,7 +76,10 @@ img { display: block; width: 375px; height: auto; }
 
 <div class="fixed-stack" id="fixedStack" aria-hidden="true">
     <div class="fixed-stage">
-        <div class="fixed-nav"><img src="nav.png" alt=""></div>
+        <div class="fixed-nav" id="fixedNav">
+            <img src="stripe.png" alt="">
+            <img src="nav.png" alt="">
+        </div>
         <div class="fixed-filters"><img src="filters.png" alt=""></div>
     </div>
 </div>
@@ -81,6 +89,7 @@ const navWrapper = document.getElementById('navWrapper');
 const filtersSentinel = document.getElementById('filtersSentinel');
 const filtersWrapper = document.getElementById('filtersWrapper');
 const fixedStack = document.getElementById('fixedStack');
+const fixedNav = document.getElementById('fixedNav');
 
 let lastScrollY = window.scrollY;
 let fixedMode = false;
@@ -89,7 +98,7 @@ let fixedFiltersActive = false;
 let lastDirection = null;
 
 function measure() {
-    document.documentElement.style.setProperty('--nav-height', `${navWrapper.offsetHeight}px`);
+    document.documentElement.style.setProperty('--nav-height', `${fixedNav.offsetHeight}px`);
     document.documentElement.style.setProperty('--filters-height', `${filtersWrapper.offsetHeight}px`);
 }
 
