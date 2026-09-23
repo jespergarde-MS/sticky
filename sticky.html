@@ -61,24 +61,42 @@ const stickyNav = document.getElementById('stickyNav');
 let lastScrollY = window.scrollY;
 let lastDirection = null;
 let stickyNavVisible = false;
+let stickyNavAnimation = null;
 
 function originalNavHasScrolledAway() {
     return navWrapper.getBoundingClientRect().bottom <= 0;
 }
 
 function transitionStickyNav(visible) {
-    const currentTransform = getComputedStyle(stickyNav).transform;
+    if (stickyNavAnimation) stickyNavAnimation.cancel();
 
-    /* Restart from the current position so reversed transitions keep their full duration. */
-    stickyNav.style.transition = 'none';
-    stickyNav.style.transform = currentTransform;
+    const currentTransform = getComputedStyle(stickyNav).transform;
+    const currentY = currentTransform === 'none'
+        ? (visible ? -stickyNav.offsetHeight : 0)
+        : new DOMMatrix(currentTransform).m42;
+    const targetY = visible ? 0 : -stickyNav.offsetHeight;
 
     if (visible) stickyNav.classList.add('is-visible');
     else stickyNav.classList.remove('is-visible');
 
-    void stickyNav.offsetHeight;
-    stickyNav.style.transition = '';
-    stickyNav.style.transform = '';
+    stickyNav.style.transition = 'none';
+    stickyNavAnimation = stickyNav.animate(
+        [
+            { transform: `translateY(${currentY}px)` },
+            { transform: `translateY(${targetY}px)` }
+        ],
+        {
+            duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 300,
+            easing: 'ease',
+            fill: 'forwards'
+        }
+    );
+    stickyNavAnimation.onfinish = function () {
+        stickyNavAnimation = null;
+        stickyNav.style.transition = '';
+        stickyNav.style.transform = '';
+        if (!stickyNavVisible) stickyNav.classList.remove('is-active');
+    };
 }
 
 function showStickyNav() {
@@ -101,17 +119,15 @@ function hideStickyNav() {
 
 function resetStickyNav() {
     stickyNavVisible = false;
+    if (stickyNavAnimation) {
+        stickyNavAnimation.cancel();
+        stickyNavAnimation = null;
+    }
     stickyNav.classList.remove('is-active', 'is-visible');
     stickyNav.style.transition = '';
     stickyNav.style.transform = '';
     stickyNav.setAttribute('aria-hidden', 'true');
 }
-
-stickyNav.addEventListener('transitionend', function (event) {
-    if (event.propertyName === 'transform' && !stickyNavVisible) {
-        stickyNav.classList.remove('is-active');
-    }
-});
 
 window.addEventListener('scroll', function () {
     const currentScrollY = window.scrollY;
