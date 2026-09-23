@@ -43,20 +43,27 @@ img { display: block; width: 375px; height: auto; }
     width: 100%;
     max-height: 0;
     overflow: hidden;
-    transform: translateY(-100%);
+    transition: max-height 300ms ease;
 }
 
-/* Animation is enabled only after the fixed filters are already visible. */
-.fixed-stack.can-animate .fixed-nav {
-    transition: max-height 300ms ease, transform 300ms ease;
+.fixed-nav-content {
+    width: 100%;
+    transform: translateY(-100%);
+    transition: transform 300ms ease;
 }
 
 .fixed-stack.nav-visible .fixed-nav {
     max-height: var(--nav-height, 0px);
+}
+
+.fixed-stack.nav-visible .fixed-nav-content {
     transform: translateY(0);
 }
 
-.fixed-filters { width: 100%; }
+.fixed-filters {
+    width: 100%;
+    position: relative;
+}
 
 /* Once the original filters meet the fixed copy, hand back immediately. */
 .fixed-stack.filters-released .fixed-filters {
@@ -91,8 +98,11 @@ img { display: block; width: 375px; height: auto; }
 
 <!-- Independent fixed copies. The originals never animate or move off screen. -->
 <div class="fixed-stack" id="fixedStack" aria-hidden="true">
-    <div class="fixed-nav">
-        <img src="nav.png" alt="">
+    <div class="fixed-nav" id="fixedNav">
+        <div class="fixed-nav-content">
+            <img src="stripe.png" alt="">
+            <img src="nav.png" alt="">
+        </div>
     </div>
     <div class="fixed-filters">
         <img src="filters.png" alt="">
@@ -103,6 +113,7 @@ img { display: block; width: 375px; height: auto; }
 const navWrapper = document.getElementById('navWrapper');
 const filtersWrapper = document.getElementById('filtersWrapper');
 const fixedStack = document.getElementById('fixedStack');
+const fixedNav = document.getElementById('fixedNav');
 
 let lastScrollY = window.scrollY;
 let filtersOriginalTop = 0;
@@ -114,7 +125,7 @@ let lastDirection = null;
 function measure() {
     document.documentElement.style.setProperty(
         '--nav-height',
-        `${navWrapper.offsetHeight}px`
+        `${fixedNav.scrollHeight}px`
     );
 
     if (!fixedMode) {
@@ -135,16 +146,10 @@ function activateFixedMode() {
     filtersWrapper.classList.add('is-replaced');
 
     /* The already-positioned fixed copy appears immediately at top: 0. */
-    fixedStack.classList.remove('can-animate', 'nav-visible', 'filters-released');
+    fixedStack.classList.remove('nav-visible', 'filters-released');
     fixedStack.classList.add('is-active');
     fixedStack.setAttribute('aria-hidden', 'false');
 
-    /* Force the non-animated initial state to paint first. */
-    void fixedStack.offsetHeight;
-
-    requestAnimationFrame(() => {
-        if (fixedMode) fixedStack.classList.add('can-animate');
-    });
 }
 
 function deactivateFixedMode() {
@@ -155,7 +160,7 @@ function deactivateFixedMode() {
     fixedFiltersActive = false;
     lastDirection = null;
 
-    fixedStack.classList.remove('is-active', 'can-animate', 'nav-visible', 'filters-released');
+    fixedStack.classList.remove('is-active', 'nav-visible', 'filters-released');
     fixedStack.setAttribute('aria-hidden', 'true');
     filtersWrapper.classList.remove('is-replaced');
     measure();
@@ -196,7 +201,7 @@ function syncFiltersHandoff(direction) {
     if (!fixedMode) return;
 
     const originalTop = filtersWrapper.getBoundingClientRect().top;
-    const fixedTop = navIsVisible ? navWrapper.offsetHeight : 0;
+    const fixedTop = navIsVisible ? fixedNav.scrollHeight : 0;
 
     /* Scrolling up: release as soon as the original filters reach the fixed row. */
     if (direction === 'up' && fixedFiltersActive && originalTop >= fixedTop) {
