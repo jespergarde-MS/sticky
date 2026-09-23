@@ -96,6 +96,7 @@ let fixedMode = false;
 let navIsVisible = false;
 let fixedFiltersActive = false;
 let lastDirection = null;
+let fixedNavAnimation = null;
 
 function measure() {
     document.documentElement.style.setProperty('--nav-height', `${fixedNav.offsetHeight}px`);
@@ -116,6 +117,10 @@ function activateFixedMode() {
 
 function deactivateFixedMode() {
     if (!fixedMode) return;
+    if (fixedNavAnimation) {
+        fixedNavAnimation.cancel();
+        fixedNavAnimation = null;
+    }
     fixedMode = false;
     navIsVisible = false;
     fixedFiltersActive = false;
@@ -125,15 +130,46 @@ function deactivateFixedMode() {
     filtersWrapper.classList.remove('is-replaced');
 }
 
+function animateFixedNav(visible) {
+    if (fixedNavAnimation) fixedNavAnimation.cancel();
+
+    const currentTransform = getComputedStyle(fixedNav).transform;
+    const currentY = currentTransform === 'none'
+        ? (visible ? -fixedNav.offsetHeight : 0)
+        : new DOMMatrix(currentTransform).m42;
+    const targetY = visible ? 0 : -fixedNav.offsetHeight;
+
+    if (visible) fixedStack.classList.add('nav-visible');
+    else fixedStack.classList.remove('nav-visible');
+
+    fixedNav.style.transition = 'none';
+    fixedNavAnimation = fixedNav.animate(
+        [
+            { transform: `translateY(${currentY}px)` },
+            { transform: `translateY(${targetY}px)` }
+        ],
+        {
+            duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 300,
+            easing: 'ease',
+            fill: 'forwards'
+        }
+    );
+    fixedNavAnimation.onfinish = function () {
+        fixedNavAnimation = null;
+        fixedNav.style.transition = '';
+        fixedNav.style.transform = '';
+    };
+}
+
 function showNavInsteadOfFilters() {
     if (!fixedMode || navIsVisible) return;
     navIsVisible = true;
-    fixedStack.classList.add('nav-visible');
+    animateFixedNav(true);
 }
 function showFiltersInsteadOfNav() {
     if (!fixedMode || !navIsVisible) return;
     navIsVisible = false;
-    fixedStack.classList.remove('nav-visible');
+    animateFixedNav(false);
 }
 function releaseFiltersToPage() {
     if (!fixedMode || !fixedFiltersActive) return;
