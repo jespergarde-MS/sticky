@@ -66,6 +66,21 @@ function originalNavHasScrolledAway() {
     return navWrapper.getBoundingClientRect().bottom <= 0;
 }
 
+function transitionStickyNav(visible) {
+    const currentTransform = getComputedStyle(stickyNav).transform;
+
+    /* Restart from the current position so reversed transitions keep their full duration. */
+    stickyNav.style.transition = 'none';
+    stickyNav.style.transform = currentTransform;
+
+    if (visible) stickyNav.classList.add('is-visible');
+    else stickyNav.classList.remove('is-visible');
+
+    void stickyNav.offsetHeight;
+    stickyNav.style.transition = '';
+    stickyNav.style.transform = '';
+}
+
 function showStickyNav() {
     if (stickyNavVisible || !originalNavHasScrolledAway()) return;
 
@@ -73,21 +88,22 @@ function showStickyNav() {
     stickyNav.classList.add('is-active');
     stickyNav.setAttribute('aria-hidden', 'false');
 
-    void stickyNav.offsetHeight;
-    stickyNav.classList.add('is-visible');
+    transitionStickyNav(true);
 }
 
 function hideStickyNav() {
     if (!stickyNavVisible) return;
 
     stickyNavVisible = false;
-    stickyNav.classList.remove('is-visible');
     stickyNav.setAttribute('aria-hidden', 'true');
+    transitionStickyNav(false);
 }
 
 function resetStickyNav() {
     stickyNavVisible = false;
     stickyNav.classList.remove('is-active', 'is-visible');
+    stickyNav.style.transition = '';
+    stickyNav.style.transform = '';
     stickyNav.setAttribute('aria-hidden', 'true');
 }
 
