@@ -48,7 +48,6 @@ img { display: block; width: 375px; height: auto; }
     transform: translateY(0);
 }
 .fixed-stack.nav-visible .fixed-stage { height: var(--nav-height, 0px); }
-.fixed-stack.nav-visible .fixed-nav { transform: translateY(0); }
 .fixed-stack.filters-released .fixed-filters { visibility: hidden; }
 .fixed-stack.nav-visible .fixed-filters { transform: translateY(-100%); }
 
@@ -113,6 +112,10 @@ function activateFixedMode() {
     fixedStack.classList.remove('nav-visible', 'filters-released');
     fixedStack.classList.add('is-active');
     fixedStack.setAttribute('aria-hidden', 'false');
+    document.documentElement.style.setProperty('--nav-height', `${fixedNav.offsetHeight}px`);
+    fixedNav.style.transition = 'none';
+    fixedNav.style.transform = `translateY(-${fixedNav.offsetHeight}px)`;
+    fixedNav.style.visibility = 'hidden';
 }
 
 function deactivateFixedMode() {
@@ -127,6 +130,7 @@ function deactivateFixedMode() {
     lastDirection = null;
     fixedStack.classList.remove('is-active', 'nav-visible', 'filters-released');
     fixedStack.setAttribute('aria-hidden', 'true');
+    fixedNav.style.visibility = '';
     filtersWrapper.classList.remove('is-replaced');
 }
 
@@ -139,8 +143,12 @@ function animateFixedNav(visible) {
         : new DOMMatrix(currentTransform).m42;
     const targetY = visible ? 0 : -fixedNav.offsetHeight;
 
-    if (visible) fixedStack.classList.add('nav-visible');
-    else fixedStack.classList.remove('nav-visible');
+    if (visible) {
+        fixedStack.classList.add('nav-visible');
+        fixedNav.style.visibility = 'visible';
+    } else {
+        fixedStack.classList.remove('nav-visible');
+    }
 
     fixedNav.style.transition = 'none';
     fixedNavAnimation = fixedNav.animate(
@@ -157,7 +165,8 @@ function animateFixedNav(visible) {
     fixedNavAnimation.onfinish = function () {
         fixedNavAnimation = null;
         fixedNav.style.transition = '';
-        fixedNav.style.transform = '';
+        fixedNav.style.transform = `translateY(${targetY}px)`;
+        if (!visible) fixedNav.style.visibility = 'hidden';
     };
 }
 
@@ -176,6 +185,7 @@ function releaseFiltersToPage() {
     fixedFiltersActive = false;
     filtersWrapper.classList.remove('is-replaced');
     fixedStack.classList.add('filters-released');
+    if (navIsVisible) fixedNav.style.visibility = 'visible';
 }
 function restoreFixedFilters() {
     if (!fixedMode || fixedFiltersActive) return;
@@ -184,10 +194,15 @@ function restoreFixedFilters() {
     fixedStack.classList.remove('filters-released');
 }
 function syncFiltersHandoff(direction) {
-    if (!fixedMode || navIsVisible) return;
+    if (!fixedMode) return;
     const originalTop = filtersWrapper.getBoundingClientRect().top;
-    if (direction === 'up' && fixedFiltersActive && originalTop >= 0) releaseFiltersToPage();
-    if (direction === 'down' && !fixedFiltersActive && originalTop <= 0) restoreFixedFilters();
+    const fixedTop = navIsVisible ? fixedNav.offsetHeight : 0;
+    if (direction === 'up' && fixedFiltersActive && originalTop >= fixedTop) {
+        releaseFiltersToPage();
+    }
+    if (direction === 'down' && !fixedFiltersActive && originalTop <= fixedTop) {
+        restoreFixedFilters();
+    }
 }
 
 function handleScroll() {
